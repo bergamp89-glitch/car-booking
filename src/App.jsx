@@ -12,8 +12,10 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import RentalManagementPage from './pages/RentalManagementPage';
 import AddCarPage from './pages/AddCarPage';
+import PaymentPage from './pages/PaymentPage';
 import MessagesPage from './pages/MessagesPage';
 import HostProfilePage from './pages/HostProfilePage';
+import NotificationsPage from './pages/NotificationsPage';
 
 function FooterWrapper() {
   const location = useLocation();
@@ -34,6 +36,7 @@ function App() {
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/car/:id" element={<CarDetailsPage />} />
             <Route path="/booking/:id" element={<BookingPage />} />
+            <Route path="/payment" element={<PaymentPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             
             {/* Host Routes */}
@@ -55,6 +58,7 @@ function App() {
             
             {/* Common Routes */}
             <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
           </Routes>
         </main>
         <FooterWrapper />

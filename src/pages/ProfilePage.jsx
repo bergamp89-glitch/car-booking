@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, CheckCircle, Clock, FileText, ChevronRight, AlertTriangle, Upload, XCircle, ScanFace, Loader2, Camera, Car, UserCircle, HelpCircle, Shield, Edit2, Save } from 'lucide-react';
+import { User, CheckCircle, Clock, FileText, ChevronRight, AlertTriangle, Upload, XCircle, ScanFace, Loader2, Camera, Car, UserCircle, HelpCircle, Shield, Edit2, Save, Trash2 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBookings } from '../contexts/BookingContext';
@@ -7,11 +7,11 @@ import toast from 'react-hot-toast';
 import AdminPanelContent from '../components/admin/AdminPanelContent';
 
 export default function ProfilePage() {
-  const { user, isDocumentsVerified, verifyDocuments, logout, isAdminAuthenticated, isHost, hostStatus, requestHostRole, updateUser } = useAuth();
+  const { user, isDocumentsVerified, verifyDocuments, logout, isAdminAuthenticated, isHost, hostStatus, requestHostRole, updateUser, guestStatus, requestGuestRole, deleteAccount } = useAuth();
   const { getBookingsByRenter } = useBookings();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const initialTab = searchParams.get('tab') === 'host' ? 'host' : (isAdminAuthenticated ? 'admin' : 'rentals');
+  const initialTab = searchParams.get('tab') === 'applications' ? 'applications' : (isAdminAuthenticated ? 'admin' : 'rentals');
   const [activeTab, setActiveTab] = useState(initialTab);
   const navigate = useNavigate();
 
@@ -107,6 +107,14 @@ export default function ProfilePage() {
     navigate('/');
   };
 
+  const handleDeleteAccount = () => {
+    if (window.confirm("Hisobingizni butunlay o'chirib tashlashni xohlaysizmi? Bu amalni ortga qaytarib bo'lmaydi!")) {
+      deleteAccount();
+      navigate('/');
+      toast.success("Hisobingiz muvaffaqiyatli o'chirildi.");
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -155,15 +163,13 @@ export default function ProfilePage() {
                   <span>Hujjatlarim</span>
                   {!isDocumentsVerified && <div className="w-2 h-2 bg-red-500 rounded-full"></div>}
                 </button>
-                {!isHost && (
-                  <button 
-                    onClick={() => setActiveTab('host')}
-                    className={`block w-full text-left px-4 py-3 font-medium rounded-xl transition-colors flex items-center justify-between ${activeTab === 'host' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <span>Host bo'lish</span>
-                    {hostStatus === 'PENDING' && <div className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Kutmoqda</div>}
-                  </button>
-                )}
+                <button 
+                  onClick={() => setActiveTab('applications')}
+                  className={`block w-full text-left px-4 py-3 font-medium rounded-xl transition-colors flex items-center justify-between ${activeTab === 'applications' ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <span>Arizalar</span>
+                  {(hostStatus === 'PENDING' || guestStatus === 'PENDING') && <div className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Kutmoqda</div>}
+                </button>
                 
                 <div className="pt-2 mt-2 border-t border-slate-100">
                   <button 
@@ -198,29 +204,55 @@ export default function ProfilePage() {
                <AdminPanelContent />
             )}
 
-            {activeTab === 'host' && !isHost && (
+            {activeTab === 'applications' && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-brand-200 text-center flex flex-col items-center">
                 <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                  <Car size={40} />
+                  <FileText size={40} />
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 mb-4">Avtomobilingizni ijaraga bering</h1>
-                <p className="text-slate-600 max-w-lg mb-8 leading-relaxed">
-                  Bo'sh turgan avtomobilingizni kunlik, haftalik yoki oylik ijaraga berib, qo'shimcha daromad toping. Barcha mijozlar va hujjatlar oldindan tasdiqlanadi.
-                </p>
+                <h1 className="text-2xl font-bold text-slate-900 mb-4">Arizalar</h1>
                 
-                {hostStatus === 'PENDING' ? (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-700 p-6 rounded-2xl w-full max-w-md">
-                    <AlertTriangle className="mx-auto mb-3 text-amber-500" size={32} />
-                    <h3 className="font-bold text-lg mb-2">Arizangiz ko'rib chiqilmoqda!</h3>
-                    <p className="text-sm">Adminlarimiz hujjatlaringiz va ma'lumotlaringizni tekshirmoqda. Tez orada sizga xabar beramiz.</p>
-                  </div>
+                {!isHost ? (
+                  <>
+                    <p className="text-slate-600 max-w-lg mb-8 leading-relaxed">
+                      Bo'sh turgan avtomobilingizni kunlik, haftalik yoki oylik ijaraga berib, qo'shimcha daromad toping. Host bo'lish uchun ariza qoldiring.
+                    </p>
+                    
+                    {hostStatus === 'PENDING' ? (
+                      <div className="bg-amber-50 border border-amber-200 text-amber-700 p-6 rounded-2xl w-full max-w-md">
+                        <AlertTriangle className="mx-auto mb-3 text-amber-500" size={32} />
+                        <h3 className="font-bold text-lg mb-2">Host arizangiz ko'rib chiqilmoqda!</h3>
+                        <p className="text-sm">Adminlarimiz ma'lumotlaringizni tekshirmoqda. Tez orada sizga xabar beramiz.</p>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={requestHostRole}
+                        className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-brand-500/30 hover:-translate-y-1"
+                      >
+                        Host bo'lishga ariza yuborish
+                      </button>
+                    )}
+                  </>
                 ) : (
-                  <button 
-                    onClick={requestHostRole}
-                    className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-brand-500/30 hover:-translate-y-1"
-                  >
-                    Host bo'lishga ariza yuborish
-                  </button>
+                  <>
+                    <p className="text-slate-600 max-w-lg mb-8 leading-relaxed">
+                      Avtomobillaringizni ijaraga berishni to'xtatmoqchimisiz? Ijarachilikdan chiqish va oddiy mijoz (Guest) bo'lish uchun ariza qoldiring.
+                    </p>
+                    
+                    {guestStatus === 'PENDING' ? (
+                      <div className="bg-amber-50 border border-amber-200 text-amber-700 p-6 rounded-2xl w-full max-w-md">
+                        <AlertTriangle className="mx-auto mb-3 text-amber-500" size={32} />
+                        <h3 className="font-bold text-lg mb-2">Guest arizangiz ko'rib chiqilmoqda!</h3>
+                        <p className="text-sm">Adminlarimiz tez orada tasdiqlashadi.</p>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={requestGuestRole}
+                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-red-500/30 hover:-translate-y-1"
+                      >
+                        Ijarachilikdan chiqish (Guest bo'lish)
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -427,6 +459,20 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <h3 className="text-lg font-bold text-red-600 mb-2">Xavfli hudud</h3>
+                  <p className="text-slate-500 text-sm mb-4">
+                    Hisobingizni o'chirish barcha ma'lumotlaringiz, ijara tarixingiz va joriy arizalaringiz yo'qolishiga olib keladi. Bu amalni ortga qaytarib bo'lmaydi.
+                  </p>
+                  <button 
+                    onClick={handleDeleteAccount}
+                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl font-medium transition-colors border border-red-200"
+                  >
+                    <Trash2 size={18} />
+                    Hisobni butunlay o'chirish
+                  </button>
                 </div>
               </div>
             )}

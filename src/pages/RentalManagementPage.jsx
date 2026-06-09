@@ -3,9 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useCars } from '../contexts/CarContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Clock, Key, CheckCircle2, ShieldAlert, ArrowRight, Activity, Wallet, AlertCircle } from 'lucide-react';
+import { Clock, Key, CheckCircle2, ShieldAlert, ArrowRight, Activity, Wallet, AlertCircle, Camera, Upload } from 'lucide-react';
 
 const RENTAL_STATES = {
+  PENDING: 'PENDING',
   BOOKED: 'BOOKED',
   ACTIVE: 'ACTIVE',
   IN_USE: 'IN_USE',
@@ -22,9 +23,24 @@ export default function RentalManagementPage() {
   
   const car = cars.find(c => c.id === parseInt(id)) || cars[0];
   
-  const [rentalState, setRentalState] = useState(RENTAL_STATES.BOOKED);
+  // Early return if cars are not loaded yet
+  if (!car) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50">Yuklanmoqda...</div>;
+  }
+  
+  const [rentalState, setRentalState] = useState(RENTAL_STATES.PENDING);
   const [elapsedHours, setElapsedHours] = useState(0);
   const [role, setRole] = useState('GUEST'); // 'GUEST' or 'HOST' for testing
+  const [paymentMethod, setPaymentMethod] = useState('CASH'); // 'CARD' or 'CASH' for testing
+  
+  const [hostPhotosUploaded, setHostPhotosUploaded] = useState(false);
+  const [guestPhotosUploaded, setGuestPhotosUploaded] = useState(false);
+
+  // Double confirmation payment states
+  const [isZalogPaid, setIsZalogPaid] = useState(false);
+  const [isZalogConfirmed, setIsZalogConfirmed] = useState(false);
+  const [isRentalPaid, setIsRentalPaid] = useState(false);
+  const [isRentalConfirmed, setIsRentalConfirmed] = useState(false);
 
   const pricePerHour = Math.round(car.pricePerDay / 24);
   const deposit = 3000000;
@@ -43,7 +59,12 @@ export default function RentalManagementPage() {
   // Host Actions
   const hostHandover = () => {
     setRentalState(RENTAL_STATES.ACTIVE);
-    toast.success('Siz "Ijaraga berdim" ni tasdiqladingiz', { icon: '🔑' });
+    if (paymentMethod === 'CASH') {
+      setIsZalogConfirmed(true);
+      toast.success('Siz mashinani topshirdingiz va garov pulini qabul qildingiz', { icon: '💵' });
+    } else {
+      toast.success('Siz "Ijaraga berdim" ni tasdiqladingiz', { icon: '🔑' });
+    }
     toast('Guest-ga bildirishnoma yuborildi: Mashina tayyor', { icon: '🔔' });
   };
 
@@ -54,28 +75,64 @@ export default function RentalManagementPage() {
 
   const hostCloseRental = (damage = false) => {
     setRentalState(RENTAL_STATES.CLOSED);
+    
+    // Logic: Zalog is subtracted from Total Cost
+    const remainingToPay = totalCost - deposit;
+    
     if (damage) {
-      toast.error('Zarar qayd etildi! Depozit ushlab qolindi.', { icon: '💥' });
+      toast.error('Zarar qayd etildi! Qo\'shimcha jarima to\'lovi hisoblanishi mumkin.', { icon: '💥' });
     } else {
-      toast.success('Ijara muvaffaqiyatli yopildi! Depozit qaytarildi.', { icon: '💰' });
+      toast.success('Ijara muvaffaqiyatli yopildi!', { icon: '✅' });
+    }
+
+    if (paymentMethod === 'CARD') {
+      if (remainingToPay > 0) {
+        toast.success(`Ijara uchun qolgan ${remainingToPay.toLocaleString()} UZS to'liq yechib olindi!`, { icon: '💳' });
+      } else if (remainingToPay < 0) {
+        toast.success(`Ijara to'liq qoplandi. Ortgan ${Math.abs(remainingToPay).toLocaleString()} UZS kartaga qaytarildi.`, { icon: '💰' });
+      } else {
+        toast.success(`Ijara to'lovi to'liq qoplandi.`, { icon: '💳' });
+      }
+    } else {
+      toast.success(`Naqd pul hisob-kitobi muvaffaqiyatli yakunlandi!`, { icon: '💵' });
     }
   };
 
   // Guest Actions
   const guestConfirmPickup = () => {
     if (rentalState === RENTAL_STATES.ACTIVE) {
-      setRentalState(RENTAL_STATES.IN_USE);
-      toast.success('Siz "Mashinani oldim" ni tasdiqladingiz', { icon: '🚗' });
-      toast('Host-ga bildirishnoma yuborildi: Ijara boshlandi!', { icon: '🔔' });
+      if (paymentMethod === 'CASH') {
+        setIsZalogPaid(true);
+        setRentalState(RENTAL_STATES.IN_USE);
+        toast.success('Siz mashinani qabul qildingiz (Garov Host tomonidan tasdiqlangan)', { icon: '🚗' });
+        toast('Host-ga bildirishnoma yuborildi: Ijara boshlandi!', { icon: '🔔' });
+      } else {
+        setRentalState(RENTAL_STATES.IN_USE);
+        toast.success('Siz "Mashinani oldim" ni tasdiqladingiz', { icon: '🚗' });
+        toast.success(`Garov puli (${deposit.toLocaleString()} UZS) yechib olindi. Bu summa yakuniy ijara to'lovidan ayirib tashlanadi.`, { icon: '💳' });
+        toast('Host-ga bildirishnoma yuborildi: Ijara boshlandi!', { icon: '🔔' });
+      }
     } else {
       toast.error('Avval Host mashinani ijaraga berganini tasdiqlashi kerak!');
     }
+  };
+
+  const hostConfirmZalog = () => {
+    setIsZalogConfirmed(true);
+    setRentalState(RENTAL_STATES.IN_USE);
+    toast.success('Garov pulini qabul qilganingizni tasdiqladingiz', { icon: '💵' });
+    toast('Guest-ga bildirishnoma yuborildi: Ijara boshlandi!', { icon: '🔔' });
   };
 
   const guestInitiateReturn = () => {
     setRentalState(RENTAL_STATES.RETURN_REQUESTED);
     toast.success('Siz "Mashinani topshirdim" ni bosdingiz', { icon: '↩️' });
     toast('Host-ga bildirishnoma yuborildi: Mashinani qabul qiling', { icon: '🔔' });
+  };
+
+  const guestConfirmRentalPayment = () => {
+    setIsRentalPaid(true);
+    toast.success('Siz naqd pulda qolgan ijara summasini to\'laganingizni belgiladingiz.', { icon: '💵' });
   };
 
   // Billing Calculations
@@ -92,19 +149,38 @@ export default function RentalManagementPage() {
             <p className="text-indigo-800 font-bold text-sm mb-1 flex items-center gap-2"><Activity size={16}/> TEST PANEL (Faqat demo uchun)</p>
             <p className="text-indigo-600 text-xs">Jarayonni ikki tomonlama tasdiqlash (Double confirmation) ni tekshirish uchun rollarni almashtiring.</p>
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setRole('HOST')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${role === 'HOST' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
-            >
-              Host ro'li
-            </button>
-            <button 
-              onClick={() => setRole('GUEST')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${role === 'GUEST' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
-            >
-              Ijarachi ro'li
-            </button>
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex gap-2">
+              <span className="text-xs font-bold text-indigo-500 mr-2 flex items-center">USUL:</span>
+              <button 
+                onClick={() => setPaymentMethod('CARD')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${paymentMethod === 'CARD' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-emerald-600 hover:bg-emerald-50'}`}
+              >
+                Karta
+              </button>
+              <button 
+                onClick={() => setPaymentMethod('CASH')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${paymentMethod === 'CASH' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-emerald-600 hover:bg-emerald-50'}`}
+              >
+                Naqd
+              </button>
+            </div>
+            <div className="w-px h-6 bg-indigo-200 hidden md:block"></div>
+            <div className="flex gap-2">
+              <span className="text-xs font-bold text-indigo-500 mr-2 flex items-center">ROL:</span>
+              <button 
+                onClick={() => setRole('HOST')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${role === 'HOST' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
+              >
+                Host
+              </button>
+              <button 
+                onClick={() => setRole('GUEST')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${role === 'GUEST' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
+              >
+                Ijarachi
+              </button>
+            </div>
           </div>
         </div>
 
@@ -135,13 +211,14 @@ export default function RentalManagementPage() {
             ></div>
 
             {[
-              { id: RENTAL_STATES.BOOKED, label: "Bron", icon: <Clock size={20}/> },
+              { id: RENTAL_STATES.PENDING, label: "Kutilmoqda", icon: <Clock size={20}/> },
+              { id: RENTAL_STATES.BOOKED, label: "Tasdiqlandi", icon: <CheckCircle2 size={20}/> },
               { id: RENTAL_STATES.ACTIVE, label: "Host tayyor", icon: <Key size={20}/> },
               { id: RENTAL_STATES.IN_USE, label: "Ijarada", icon: <Activity size={20}/> },
               { id: RENTAL_STATES.RETURN_REQUESTED, label: "Topshirildi", icon: <ArrowRight size={20}/> },
               { id: RENTAL_STATES.CLOSED, label: "Yopildi", icon: <CheckCircle2 size={20}/> }
             ].map((step, idx) => {
-              const statesOrder = [RENTAL_STATES.BOOKED, RENTAL_STATES.ACTIVE, RENTAL_STATES.IN_USE, RENTAL_STATES.RETURN_REQUESTED, RENTAL_STATES.RETURNED, RENTAL_STATES.CLOSED];
+              const statesOrder = [RENTAL_STATES.PENDING, RENTAL_STATES.BOOKED, RENTAL_STATES.ACTIVE, RENTAL_STATES.IN_USE, RENTAL_STATES.RETURN_REQUESTED, RENTAL_STATES.RETURNED, RENTAL_STATES.CLOSED];
               const currentIndex = statesOrder.indexOf(rentalState);
               const stepIndex = statesOrder.indexOf(step.id);
               let statusClass = "bg-white text-slate-400 border-slate-200";
@@ -172,6 +249,38 @@ export default function RentalManagementPage() {
             {/* Dynamic UI based on role and state */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center min-h-[300px] flex flex-col justify-center items-center">
               
+              {/* STATUS: PENDING */}
+              {rentalState === RENTAL_STATES.PENDING && (
+                <>
+                  <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
+                    <Clock size={40} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">So'rov yuborildi</h2>
+                  <p className="text-slate-600 mb-8 max-w-md">Ijara so'rovi xostga yuborildi. U tasdiqlaganidan keyingina pul yechiladi va mashinani olasiz.</p>
+                  
+                  {role === 'HOST' ? (
+                    <div className="flex gap-4 w-full justify-center">
+                      <button 
+                        onClick={() => { setRentalState(RENTAL_STATES.BOOKED); toast.success("So'rov tasdiqlandi!"); }}
+                        className="bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2"
+                      >
+                        <CheckCircle2 size={18}/> Tasdiqlash
+                      </button>
+                      <button 
+                        onClick={() => { setRentalState(RENTAL_STATES.CLOSED); toast.error("So'rov rad etildi!"); }}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2"
+                      >
+                        <ShieldAlert size={18}/> Rad etish
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
+                      Host'ning tasdiqlashini kutmoqdasiz...
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* STATUS: BOOKED */}
               {rentalState === RENTAL_STATES.BOOKED && (
                 <>
@@ -182,12 +291,45 @@ export default function RentalManagementPage() {
                   <p className="text-slate-600 mb-8 max-w-md">Mashinani olib ketish vaqti kelganda, Host mashinani tayyorlaganini bildiradi.</p>
                   
                   {role === 'HOST' ? (
-                    <button onClick={hostHandover} className="bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-brand-500/30 transition-all flex items-center gap-2">
-                      <Key /> Men ijaraga berdim (Handover)
-                    </button>
+                    <div className="space-y-4 max-w-sm mx-auto w-full">
+                      <div className={`border-2 border-dashed rounded-xl p-6 transition-all ${hostPhotosUploaded ? 'border-green-500 bg-green-50' : 'border-slate-300 hover:border-brand-500 bg-slate-50'}`}>
+                        {hostPhotosUploaded ? (
+                          <div className="flex flex-col items-center text-green-600">
+                            <CheckCircle2 size={32} className="mb-2" />
+                            <p className="font-bold">Rasmlar yuklandi</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center text-slate-500 cursor-pointer" onClick={() => { toast.success("Rasmlar yuklandi"); setHostPhotosUploaded(true); }}>
+                            <Camera size={32} className="mb-2 text-slate-400" />
+                            <p className="font-bold text-slate-700 mb-1">Topshirish akti: 4 ta rasm yuklang</p>
+                            <p className="text-xs text-slate-400 text-center">Oldi, orqa, o'ng va chap tomoni. (Mock ustiga bosing)</p>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={hostHandover} 
+                        disabled={!hostPhotosUploaded}
+                        className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Key /> {paymentMethod === 'CASH' ? 'Garovni oldim va Ijaraga berdim' : 'Men ijaraga berdim (Handover)'}
+                      </button>
+                    </div>
                   ) : (
-                    <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
-                      Host'ning tasdiqlashini kutmoqdasiz...
+                    <div className="space-y-4">
+                      <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
+                        Host'ning tasdiqlashini kutmoqdasiz...
+                      </div>
+                      <button 
+                        onClick={() => {
+                          if(confirm("Haqiqatan ham bronni bekor qilasizmi? Bekor qilish qoidasiga muvofiq pul qaytariladi.")) {
+                            setRentalState(RENTAL_STATES.CLOSED);
+                            toast.success("Bron bekor qilindi", { icon: '❌' });
+                          }
+                        }}
+                        className="w-full bg-white hover:bg-slate-50 text-rose-600 border border-slate-200 font-bold py-3 px-8 rounded-xl shadow-sm transition-all"
+                      >
+                        Bronni bekor qilish
+                      </button>
                     </div>
                   )}
                 </>
@@ -229,9 +371,29 @@ export default function RentalManagementPage() {
                   <p className="text-slate-600 mb-8">Auto-timer orqali ijaraga olingan vaqt hisoblanmoqda (Test tizimi: 1 soniya = 1 soat).</p>
                   
                   {role === 'GUEST' ? (
-                    <button onClick={guestInitiateReturn} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-rose-500/30 transition-all flex items-center gap-2">
-                      <ArrowRight /> Men mashinani topshirdim
-                    </button>
+                    <div className="space-y-4 max-w-sm mx-auto w-full">
+                      <div className={`border-2 border-dashed rounded-xl p-6 transition-all ${guestPhotosUploaded ? 'border-green-500 bg-green-50' : 'border-slate-300 hover:border-brand-500 bg-slate-50'}`}>
+                        {guestPhotosUploaded ? (
+                          <div className="flex flex-col items-center text-green-600">
+                            <CheckCircle2 size={32} className="mb-2" />
+                            <p className="font-bold">Qaytarish rasmlari yuklandi</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center text-slate-500 cursor-pointer" onClick={() => { toast.success("Rasmlar yuklandi"); setGuestPhotosUploaded(true); }}>
+                            <Camera size={32} className="mb-2 text-slate-400" />
+                            <p className="font-bold text-slate-700 mb-1">Qaytarish akti: 4 ta rasm yuklang</p>
+                            <p className="text-xs text-slate-400 text-center">Dalil uchun mashinaning joriy holatini rasmga oling.</p>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={guestInitiateReturn} 
+                        disabled={!guestPhotosUploaded}
+                        className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <ArrowRight /> Men mashinani topshirdim
+                      </button>
+                    </div>
                   ) : (
                     <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
                       Ijarachi mashinani o'zida saqlamoqda.
@@ -268,21 +430,40 @@ export default function RentalManagementPage() {
                     <Wallet size={40} />
                   </div>
                   <h2 className="text-2xl font-bold text-slate-900 mb-2">Hisob-kitob qismi</h2>
-                  <p className="text-slate-600 mb-8 max-w-md">Mashina eson-omon qaytarildi. To'lov va depozit masalasini yechib, ijarani yoping.</p>
+                  <p className="text-slate-600 mb-8 max-w-md">Mashina eson-omon qaytarildi. Yakuniy ijara to'lovi masalasini yechib, ijarani yoping.</p>
                   
                   {role === 'HOST' ? (
-                    <div className="flex gap-4 w-full justify-center">
-                      <button onClick={() => hostCloseRental(false)} className="bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2">
-                        Hammasi joyida, Yopish
-                      </button>
-                      <button onClick={() => hostCloseRental(true)} className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2">
-                        <ShieldAlert size={18}/> Zarar bor
-                      </button>
-                    </div>
+                    paymentMethod === 'CASH' && !isRentalPaid ? (
+                      <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
+                        Guest naqd pulni berganini tasdiqlashi kutilmoqda...
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4 w-full justify-center max-w-sm mx-auto">
+                        {paymentMethod === 'CASH' && isRentalPaid && (
+                          <p className="text-sm font-bold text-emerald-600 bg-emerald-50 py-2 rounded-lg mb-2">
+                            Guest naqd pulni berganini belgiladi!
+                          </p>
+                        )}
+                        <div className="flex gap-4 w-full">
+                          <button onClick={() => hostCloseRental(false)} className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+                            {paymentMethod === 'CASH' ? 'Pulni oldim, Yopish' : 'Hammasi joyida, Yopish'}
+                          </button>
+                          <button onClick={() => hostCloseRental(true)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+                            <ShieldAlert size={18}/> Zarar bor
+                          </button>
+                        </div>
+                      </div>
+                    )
                   ) : (
-                    <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
-                      Host chekni yakunlamoqda...
-                    </div>
+                    paymentMethod === 'CASH' && !isRentalPaid ? (
+                      <button onClick={guestConfirmRentalPayment} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2 text-lg">
+                        <Wallet /> Qolgan qismni naqd to'ladim
+                      </button>
+                    ) : (
+                      <div className="bg-slate-50 text-slate-500 py-3 px-6 rounded-xl border border-slate-200">
+                        Host ijarani yakunlashi kutilmoqda...
+                      </div>
+                    )
                   )}
                 </>
               )}
@@ -295,6 +476,24 @@ export default function RentalManagementPage() {
                   </div>
                   <h2 className="text-3xl font-black text-slate-900 mb-2">Yopilgan</h2>
                   <p className="text-slate-600 mb-8">Ushbu ijara muvaffaqiyatli yakuniga yetdi.</p>
+                  
+                  {role === 'HOST' && (
+                    <div className="mb-6 w-full max-w-sm mx-auto">
+                      <button 
+                        onClick={() => {
+                          const amount = prompt("Talab qilinayotgan summa (UZS) masalan: 150000:");
+                          const reason = prompt("Qanday sababga ko'ra? (masalan: Radar, Benzin tugagan):");
+                          if(amount && reason) {
+                            toast.success(`Mijozga ${amount} UZS (${reason}) to'lash bo'yicha so'rov yuborildi!`, { icon: '💸' });
+                          }
+                        }}
+                        className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2"
+                      >
+                        <AlertCircle size={18} /> Jarima/Qo'shimcha to'lov so'rash
+                      </button>
+                    </div>
+                  )}
+
                   <Link to="/" className="text-brand-600 font-medium hover:underline flex items-center gap-1">
                     Bosh sahifaga qaytish <ArrowRight size={16}/>
                   </Link>

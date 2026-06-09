@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Car, User, Menu, X, ArrowRightLeft, LogOut, MessageSquare, LayoutDashboard } from 'lucide-react';
+import { Car, User, Menu, X, ArrowRightLeft, LogOut, MessageSquare, LayoutDashboard, Bell } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Navbar() {
@@ -47,8 +47,14 @@ export default function Navbar() {
                   </>
                 )}
 
-                <Link to="/messages" className="text-slate-600 hover:text-brand-600 font-medium transition-colors">
+                <Link to="/messages" className="text-slate-600 hover:text-brand-600 font-medium transition-colors relative">
                   <MessageSquare size={20} />
+                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">2</span>
+                </Link>
+
+                <Link to="/notifications" className="text-slate-600 hover:text-brand-600 font-medium transition-colors relative flex items-center p-1">
+                  <Bell size={20} />
+                  <span className="absolute -top-1 -right-1 bg-brand-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">1</span>
                 </Link>
 
                 <div className="flex items-center gap-4 border-l border-slate-200 pl-6">
@@ -59,15 +65,10 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <>
-                <Link to="/login" className="flex items-center gap-2 text-slate-600 hover:text-brand-600 font-medium transition-colors">
-                  <User size={20} />
-                  <span>Kirish</span>
-                </Link>
-                <Link to="/register" className="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-full font-medium transition-colors">
-                  Ro'yxatdan o'tish
-                </Link>
-              </>
+              <Link to="/login" className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-full font-medium transition-colors shadow-sm shadow-brand-500/30">
+                <User size={18} />
+                <span>Kirish</span>
+              </Link>
             )}
           </div>
 
@@ -137,12 +138,8 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  <div className="h-px bg-slate-100 my-4"></div>
-                  <Link to="/login" onClick={closeMenu} className="block px-4 py-3 text-slate-700 hover:bg-slate-50 rounded-xl font-medium flex items-center gap-2">
+                  <Link to="/login" onClick={closeMenu} className="block px-4 py-3 mt-4 text-center bg-brand-600 text-white rounded-xl font-medium shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">
                     <User size={20} /> Kirish
-                  </Link>
-                  <Link to="/register" onClick={closeMenu} className="block px-4 py-3 mt-2 text-center bg-brand-600 text-white rounded-xl font-medium shadow-lg shadow-brand-500/30">
-                    Ro'yxatdan o'tish
                   </Link>
                 </>
               )}

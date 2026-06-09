@@ -19,12 +19,20 @@ export default function AddCarPage() {
   const [year, setYear] = useState('');
   const [description, setDescription] = useState('');
   // Pricing states
+  const [hasHourly, setHasHourly] = useState(false);
   const [hasDaily, setHasDaily] = useState(true);
   const [hasWeekly, setHasWeekly] = useState(false);
   const [hasMonthly, setHasMonthly] = useState(false);
+  const [pricePerHour, setPricePerHour] = useState('');
   const [pricePerDay, setPricePerDay] = useState('');
   const [pricePerWeek, setPricePerWeek] = useState('');
   const [pricePerMonth, setPricePerMonth] = useState('');
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [distanceLimit, setDistanceLimit] = useState('Cheklanmagan');
+  const [securityDeposit, setSecurityDeposit] = useState('');
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountCondition, setDiscountCondition] = useState('');
+  const [discountPercentage, setDiscountPercentage] = useState('5');
   const [fuelType, setFuelType] = useState('Benzin');
   const [transmission, setTransmission] = useState('Avtomat');
   const [seats, setSeats] = useState('5');
@@ -55,6 +63,7 @@ export default function AddCarPage() {
 
 
   const [cancellationPolicy, setCancellationPolicy] = useState("Bepul bekor qilish");
+  const [customCancellationPolicy, setCustomCancellationPolicy] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Karta yoki Naqd pulda");
   
   const [previewUrls, setPreviewUrls] = useState([]);
@@ -70,12 +79,24 @@ export default function AddCarPage() {
         setFuelType(carToEdit.fuelType || carToEdit.fuel || 'Benzin');
         setTransmission(carToEdit.transmission || 'Avtomat');
         setSeats(carToEdit.seats?.toString() || '5');
+        setPickupLocation(carToEdit.pickupLocation || '');
+        setDistanceLimit(carToEdit.distanceLimit || 'Cheklanmagan');
+        setSecurityDeposit(carToEdit.securityDeposit?.toString() || '');
+        if (carToEdit.discount && carToEdit.discount.percentage > 0) {
+          setHasDiscount(true);
+          setDiscountCondition(carToEdit.discount.condition || '');
+          setDiscountPercentage(carToEdit.discount.percentage?.toString() || '5');
+        } else {
+          setHasDiscount(false);
+        }
         
         if (carToEdit.price) {
+          if (carToEdit.price.hourly) { setHasHourly(true); setPricePerHour(carToEdit.price.hourly.toString()); }
           if (carToEdit.price.daily) { setHasDaily(true); setPricePerDay(carToEdit.price.daily.toString()); }
           if (carToEdit.price.weekly) { setHasWeekly(true); setPricePerWeek(carToEdit.price.weekly.toString()); }
           if (carToEdit.price.monthly) { setHasMonthly(true); setPricePerMonth(carToEdit.price.monthly.toString()); }
         } else {
+          if (carToEdit.pricePerHour) { setHasHourly(true); setPricePerHour(carToEdit.pricePerHour.toString()); }
           if (carToEdit.pricePerDay) { setHasDaily(true); setPricePerDay(carToEdit.pricePerDay.toString()); }
           if (carToEdit.pricePerWeek) { setHasWeekly(true); setPricePerWeek(carToEdit.pricePerWeek.toString()); }
           if (carToEdit.pricePerMonth) { setHasMonthly(true); setPricePerMonth(carToEdit.pricePerMonth.toString()); }
@@ -90,7 +111,13 @@ export default function AddCarPage() {
         }
 
         if (carToEdit.policies) {
-          setCancellationPolicy(carToEdit.policies.cancellation || "Bepul bekor qilish");
+          const loadedCancellation = carToEdit.policies.cancellation || "Bepul bekor qilish";
+          if (["Bepul bekor qilish", "Qat'iy bekor qilish", "Bekor qilish mumkin emas"].includes(loadedCancellation)) {
+            setCancellationPolicy(loadedCancellation);
+          } else {
+            setCancellationPolicy("Boshqa");
+            setCustomCancellationPolicy(loadedCancellation);
+          }
           setPaymentMethod(carToEdit.policies.payment || "Karta yoki Naqd pulda");
         }
 
@@ -209,7 +236,7 @@ export default function AddCarPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!hasDaily && !hasWeekly && !hasMonthly) {
+    if (!hasHourly && !hasDaily && !hasWeekly && !hasMonthly) {
       toast.error("Kamida bitta tarif turini tanlang!");
       return;
     }
@@ -244,16 +271,24 @@ export default function AddCarPage() {
         peaceOfMind: peaceOfMindFeatures,
       },
       policies: {
-        cancellation: cancellationPolicy,
+        cancellation: cancellationPolicy === 'Boshqa' ? customCancellationPolicy : cancellationPolicy,
         payment: paymentMethod
       },
       photos: previewUrls,
       image: previewUrls.length > 0 ? previewUrls[0] : 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
       price: {
+        hourly: hasHourly ? parseInt(pricePerHour) : null,
         daily: hasDaily ? parseInt(pricePerDay) : null,
         weekly: hasWeekly ? parseInt(pricePerWeek) : null,
         monthly: hasMonthly ? parseInt(pricePerMonth) : null
-      }
+      },
+      pickupLocation,
+      distanceLimit,
+      securityDeposit: securityDeposit ? parseInt(securityDeposit) : 0,
+      discount: hasDiscount ? {
+        condition: discountCondition,
+        percentage: parseInt(discountPercentage)
+      } : null
     };
 
     if (isEditing) {
@@ -391,6 +426,20 @@ export default function AddCarPage() {
                   <div className="md:col-span-2 space-y-4">
                     <label className="block text-sm font-bold text-slate-900 mb-2 border-b border-slate-100 pb-2">Tariflarni sozlash</label>
                     
+                    {/* Hourly */}
+                    <div className="flex items-start gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                      <input type="checkbox" id="hasHourly" checked={hasHourly} onChange={(e) => setHasHourly(e.target.checked)} className="mt-1 w-5 h-5 text-brand-600 focus:ring-brand-500 rounded border-slate-300" />
+                      <div className="flex-1">
+                        <label htmlFor="hasHourly" className="block text-sm font-bold text-slate-900 mb-1 cursor-pointer">Soatlik tarif</label>
+                        {hasHourly && (
+                          <div className="relative mt-2">
+                            <input type="number" value={pricePerHour} onChange={e => setPricePerHour(e.target.value)} placeholder="50000" required className="w-full border border-slate-200 rounded-xl py-3 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xl font-bold text-slate-900 bg-white" />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">UZS</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Daily */}
                     <div className="flex items-start gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
                       <input type="checkbox" id="hasDaily" checked={hasDaily} onChange={(e) => setHasDaily(e.target.checked)} className="mt-1 w-5 h-5 text-brand-600 focus:ring-brand-500 rounded border-slate-300" />
@@ -434,11 +483,54 @@ export default function AddCarPage() {
                     </div>
 
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Avtomobil turar joyi (Manzil)</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                      <input type="text" placeholder="Toshkent sh, Chilonzor tumani..." required className="w-full border border-slate-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  <div className="md:col-span-2 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Avtomobil turar joyi (Manzil)</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        <input type="text" value={pickupLocation} onChange={e => setPickupLocation(e.target.value)} placeholder="Toshkent sh, Chilonzor tumani..." required className="w-full border border-slate-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Kiritilgan masofa (Kunlik)</label>
+                      <select value={distanceLimit} onChange={e => setDistanceLimit(e.target.value)} className="w-full border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="Cheklanmagan">Cheklanmagan</option>
+                        <option value="100 km / kun">100 km / kun</option>
+                        <option value="200 km / kun">200 km / kun</option>
+                        <option value="300 km / kun">300 km / kun</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Garov puli (Zalog)</label>
+                      <div className="relative">
+                        <input type="number" value={securityDeposit} onChange={e => setSecurityDeposit(e.target.value)} placeholder="Masalan: 1000000 (Agar bepul bo'lsa bo'sh qoldiring)" className="w-full border border-slate-200 rounded-xl py-3 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">UZS</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Ehtimoliy jarima yoki kichik zararlar uchun ijaradan oldin olinadi.</p>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                      <div className="flex items-start gap-4">
+                        <input type="checkbox" id="hasDiscount" checked={hasDiscount} onChange={(e) => setHasDiscount(e.target.checked)} className="mt-1 w-5 h-5 text-brand-600 focus:ring-brand-500 rounded border-slate-300" />
+                        <div className="flex-1">
+                          <label htmlFor="hasDiscount" className="block text-sm font-bold text-slate-900 mb-1 cursor-pointer">Chegirma qo'llash</label>
+                          <p className="text-xs text-slate-500 mb-3">Uzoq muddatli ijaralar uchun mijozlarni jalb qilish</p>
+                          {hasDiscount && (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs text-slate-600 mb-1">Chegirma sharti</label>
+                                <input type="text" value={discountCondition} onChange={e => setDiscountCondition(e.target.value)} placeholder="Masalan: 3 kundan ortiq ijara uchun" required className="w-full border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white" />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-600 mb-1">Chegirma (%)</label>
+                                <input type="number" value={discountPercentage} onChange={e => setDiscountPercentage(e.target.value)} placeholder="5" required className="w-full border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -639,10 +731,22 @@ export default function AddCarPage() {
                 <div className="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h4 className="font-bold text-slate-900 mb-3">Bekor qilish qoidalari</h4>
-                    <select value={cancellationPolicy} onChange={e => setCancellationPolicy(e.target.value)} className="w-full border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <select value={cancellationPolicy} onChange={e => setCancellationPolicy(e.target.value)} className="w-full border border-slate-200 rounded-xl py-3 px-4 mb-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
                       <option value="Bepul bekor qilish">Bepul bekor qilish</option>
                       <option value="Qat'iy bekor qilish">Qat'iy bekor qilish</option>
+                      <option value="Bekor qilish mumkin emas">Bekor qilish mumkin emas</option>
+                      <option value="Boshqa">Boshqa qoida qo'shish...</option>
                     </select>
+                    {cancellationPolicy === 'Boshqa' && (
+                      <input 
+                        type="text" 
+                        value={customCancellationPolicy}
+                        onChange={(e) => setCustomCancellationPolicy(e.target.value)}
+                        placeholder="Bekor qilish shartini yozing..."
+                        required
+                        className="w-full border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      />
+                    )}
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 mb-3">To'lov usullari</h4>

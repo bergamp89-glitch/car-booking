@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboardPage() {
-  const { user, hostStatus, approveHostRole, isAdminAuthenticated, adminLogout } = useAuth();
+  const { user, hostStatus, approveHostRole, guestStatus, approveGuestRole, isAdminAuthenticated, adminLogout } = useAuth();
   const [activeTab, setActiveTab] = useState('cars'); // 'cars', 'users', 'disputes'
   const [activeReport, setActiveReport] = useState(null);
   const navigate = useNavigate();
@@ -29,6 +29,11 @@ export default function AdminDashboardPage() {
   const handleApproveHost = () => {
     approveHostRole();
     toast.success('Foydalanuvchi "Host" etib tasdiqlandi!', { icon: '✅' });
+  };
+
+  const handleApproveGuest = () => {
+    approveGuestRole();
+    toast.success('Foydalanuvchi "Guest" etib tasdiqlandi!', { icon: '✅' });
   };
 
   return (
@@ -301,7 +306,7 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 </div>
-                <div className="w-full xl:w-auto flex flex-row xl:flex-col gap-3 mt-4 xl:mt-0 shrink-0">
+                <div className="w-full xl:w-auto flex flex-row-reverse xl:flex-col gap-3 mt-4 xl:mt-0 shrink-0">
                   <button onClick={handleApproveCar} className="flex-1 xl:flex-none bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm shadow-brand-500/30 text-sm flex items-center justify-center gap-2">
                     <CheckCircle size={16} /> Tasdiqlash
                   </button>
@@ -316,7 +321,7 @@ export default function AdminDashboardPage() {
           {activeTab === 'users' && (
             <div className="divide-y divide-slate-100">
               {/* Show current user's pending request if they applied */}
-              {hostStatus === 'PENDING' ? (
+              {hostStatus === 'PENDING' && (
                 <div className="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-slate-50/50 transition-colors">
                   <div className="w-16 h-16 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-inner">
                     {user?.name?.[0] || 'A'}
@@ -332,7 +337,7 @@ export default function AdminDashboardPage() {
                       "O'z avtomobilimni ijaraga bermoqchiman. Barcha hujjatlarim joyida, ishonchli insonman."
                     </div>
                   </div>
-                  <div className="w-full md:w-auto flex flex-row md:flex-col gap-2 mt-4 md:mt-0">
+                  <div className="w-full md:w-auto flex flex-row-reverse md:flex-col gap-2 mt-4 md:mt-0">
                     <button onClick={handleApproveHost} className="flex-1 md:flex-none bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm text-sm flex justify-center items-center gap-2">
                       <CheckCircle size={16} /> Tasdiqlash
                     </button>
@@ -341,7 +346,36 @@ export default function AdminDashboardPage() {
                     </button>
                   </div>
                 </div>
-              ) : (
+              )}
+              
+              {guestStatus === 'PENDING' && (
+                <div className="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-slate-50/50 transition-colors">
+                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-inner">
+                    {user?.name?.[0] || 'A'}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-lg font-bold text-slate-900">{user?.name || 'Aziz'}</h3>
+                      <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold border border-amber-200">Ariza kutmoqda</span>
+                    </div>
+                    <p className="text-slate-500 text-sm">{user?.phone || '+998 90 123 45 67'} • Host</p>
+                    <div className="mt-3 text-sm text-slate-700 bg-amber-50 p-4 rounded-xl border border-amber-100">
+                      <strong className="text-amber-900 block mb-1">Guest bo'lish uchun ariza (Ijarachilikdan chiqish):</strong> 
+                      "Avtomobilimni ijaraga berishni to'xtatmoqchiman. Meni oddiy mijoz (Guest) roliga o'tkazing."
+                    </div>
+                  </div>
+                  <div className="w-full md:w-auto flex flex-row-reverse md:flex-col gap-2 mt-4 md:mt-0">
+                    <button onClick={handleApproveGuest} className="flex-1 md:flex-none bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm text-sm flex justify-center items-center gap-2">
+                      <CheckCircle size={16} /> Tasdiqlash
+                    </button>
+                    <button className="flex-1 md:flex-none bg-white border border-red-200 text-red-600 hover:bg-red-50 px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm text-sm">
+                      Rad etish
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {hostStatus !== 'PENDING' && guestStatus !== 'PENDING' && (
                 <div className="p-16 flex flex-col items-center justify-center text-slate-500">
                   <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                     <CheckCircle size={40} className="text-slate-300" />

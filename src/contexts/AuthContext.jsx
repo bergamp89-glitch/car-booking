@@ -62,6 +62,30 @@ export function AuthProvider({ children }) {
     localStorage.setItem('carbooking_user', JSON.stringify(updatedUser));
   };
 
+  const requestGuestRole = () => {
+    if (!user) return;
+    const updatedUser = { ...user, guestStatus: 'PENDING' };
+    setUser(updatedUser);
+    localStorage.setItem('carbooking_user', JSON.stringify(updatedUser));
+
+    // Mock Admin Approval after 3 seconds
+    setTimeout(() => {
+      import('react-hot-toast').then(({ default: toast }) => {
+        toast.success('Admin arizangizni tasdiqladi. Siz endi faqat Ijarachisiz (Guest)!', { icon: '✅', duration: 5000 });
+      });
+      const approvedUser = { ...updatedUser, guestStatus: 'APPROVED', hostStatus: null, role: 'GUEST' };
+      setUser(approvedUser);
+      localStorage.setItem('carbooking_user', JSON.stringify(approvedUser));
+    }, 3000);
+  };
+
+  const approveGuestRole = () => {
+    if (!user) return;
+    const updatedUser = { ...user, guestStatus: 'APPROVED', hostStatus: null, role: 'GUEST' };
+    setUser(updatedUser);
+    localStorage.setItem('carbooking_user', JSON.stringify(updatedUser));
+  };
+
   const verifyDocuments = () => {
     if (!user) return;
     const updatedUser = { ...user, documentsVerified: true };
@@ -85,6 +109,13 @@ export function AuthProvider({ children }) {
     return false;
   };
 
+  const deleteAccount = () => {
+    setUser(null);
+    localStorage.removeItem('carbooking_user');
+    setIsAdminAuthenticated(false);
+    localStorage.removeItem('carbooking_admin');
+  };
+
   const adminLogout = () => {
     setIsAdminAuthenticated(false);
     localStorage.removeItem('carbooking_admin');
@@ -96,14 +127,18 @@ export function AuthProvider({ children }) {
     logout,
     requestHostRole,
     approveHostRole,
+    requestGuestRole,
+    approveGuestRole,
     verifyDocuments,
     updateUser,
+    deleteAccount,
     adminLogin,
     adminLogout,
     isAuthenticated: !!user,
     isAdminAuthenticated,
     isHost: user?.role === 'HOST' || user?.role === 'ADMIN',
     hostStatus: user?.hostStatus || null,
+    guestStatus: user?.guestStatus || null,
     isDocumentsVerified: user?.documentsVerified || false
   };
 

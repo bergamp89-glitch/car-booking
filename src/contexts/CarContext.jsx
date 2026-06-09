@@ -12,10 +12,19 @@ export function CarProvider({ children }) {
 
   useEffect(() => {
     // Load from local storage or initialize with mock data
-    const storedCars = localStorage.getItem('carbooking_cars');
+    let storedCars = localStorage.getItem('carbooking_cars');
+    
     if (storedCars) {
-      setCars(JSON.parse(storedCars));
-    } else {
+      const parsed = JSON.parse(storedCars);
+      // Force refresh if the first car is still the old mock (Malibu 2) or has an online image
+      if ((parsed[0] && parsed[0].model === 'Malibu 2' && parsed[0].year === 2023) || (parsed[0] && parsed[0].image.includes('unsplash')) || (parsed[0] && parsed[0].image.includes('wikimedia'))) {
+        storedCars = null;
+      } else {
+        setCars(parsed);
+      }
+    } 
+    
+    if (!storedCars) {
       setCars(MOCK_CARS);
       localStorage.setItem('carbooking_cars', JSON.stringify(MOCK_CARS));
     }

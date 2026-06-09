@@ -22,6 +22,13 @@ export default function HostDashboardPage() {
     navigate(`/edit-car/${carId}`);
   };
 
+  const handleDeleteCar = (carId) => {
+    if (window.confirm("Haqiqatan ham bu avtomobilni o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi!")) {
+      deleteCar(carId);
+      toast.success("Mashina muvaffaqiyatli o'chirildi");
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-[calc(100vh-64px)] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -107,7 +114,7 @@ export default function HostDashboardPage() {
                           Faollashtirish
                         </button>
                       )}
-                      <button onClick={() => { deleteCar(car.id); toast.success('Mashina o\'chirildi'); }} className="p-2 text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors" title="O'chirish">
+                      <button onClick={() => handleDeleteCar(car.id)} className="p-2 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-100 rounded-lg transition-colors shadow-sm" title="O'chirish">
                         <XCircle size={18} />
                       </button>
                     </div>
@@ -146,8 +153,8 @@ export default function HostDashboardPage() {
                         <p>{req.startDate} - {req.endDate} ({req.totalDays} kun)</p>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => { updateBookingStatus(req.id, 'APPROVED'); toast.success('So\'rov qabul qilindi'); }} className="flex-1 bg-brand-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-700">Qabul qilish</button>
-                        <button onClick={() => { updateBookingStatus(req.id, 'REJECTED'); toast.error('So\'rov rad etildi'); }} className="flex-1 bg-white border border-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">Rad etish</button>
+                        <button onClick={() => { updateBookingStatus(req.id, 'REJECTED'); toast.error('So\'rov rad etildi'); }} className="flex-1 bg-white border border-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">Rad etish</button>
+                        <button onClick={() => { updateBookingStatus(req.id, 'APPROVED'); toast.success('So\'rov qabul qilindi'); }} className="flex-1 bg-brand-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors shadow-sm">Qabul qilish</button>
                       </div>
                     </div>
                   ))

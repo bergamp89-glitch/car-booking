@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCars } from '../contexts/CarContext';
+import { useBookings } from '../contexts/BookingContext';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { Star, Settings2, Fuel, Users, ShieldCheck, ShieldAlert, MapPin, Calendar, CheckCircle2, Info, Car, UserPlus, Clock, Sparkles, Wrench, HeadphonesIcon, Pencil, ThumbsUp, CreditCard, Gauge, Shield, Heart, Share2, Mail, Copy, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -10,12 +13,13 @@ export default function CarDetailsPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isDocumentsVerified } = useAuth();
   const { cars } = useCars();
+  const { bookings } = useBookings();
   
   const car = cars.find(c => c.id === parseInt(id) && c.status === 'ACTIVE');
 
   // Booking states
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('10:00');
   const [pickupLocation, setPickupLocation] = useState('On-site at Daniel K. Inouye International Airport');
@@ -30,9 +34,29 @@ export default function CarDetailsPage() {
     const future = new Date();
     future.setDate(today.getDate() + 3);
     
-    setStartDate(today.toISOString().split('T')[0]);
-    setEndDate(future.toISOString().split('T')[0]);
+    setStartDate(today);
+    setEndDate(future);
   }, []);
+
+  const carBookings = bookings ? bookings.filter(b => b.carId === car?.id && b.status !== 'REJECTED' && b.status !== 'CANCELLED') : [];
+  
+  const getExcludedDates = () => {
+    let dates = [];
+    carBookings.forEach(booking => {
+      if (!booking.startDate || booking.startDate.includes('Ertaga')) return;
+      let current = new Date(booking.startDate.split(',')[0]); 
+      const end = new Date(booking.endDate.split(',')[0]);
+      if (isNaN(current.getTime()) || isNaN(end.getTime())) return;
+      
+      while (current <= end) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+    });
+    return dates;
+  };
+  
+  const excludedDates = getExcludedDates();
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -45,35 +69,32 @@ export default function CarDetailsPage() {
       const calculatedDays = diffDays > 0 ? diffDays : 1;
       setDaysCount(calculatedDays);
       
-      const basePrice = car ? (car.pricePerDay || 75) : 75; // Use car.pricePerDay or fallback to 75
+      const getBasePrice = () => {
+        if (!car) return 75000; // default in UZS
+        if (car.price) return car.price.daily || (car.price.weekly ? car.price.weekly / 7 : 0) || (car.price.monthly ? car.price.monthly / 30 : 0) || (car.price.hourly ? car.price.hourly * 24 : 0) || 75000;
+        return car.pricePerDay || (car.pricePerWeek ? car.pricePerWeek / 7 : 0) || (car.pricePerMonth ? car.pricePerMonth / 30 : 0) || 75000;
+      };
+      const basePrice = getBasePrice();
       
       let calcTotal = calculatedDays * basePrice;
-      let calcDiscount = 0;
-      
-      // 3+ days discount logic
-      if (calculatedDays >= 3) {
-        calcDiscount = Math.floor(calcTotal * 0.05); // 5% discount for 3+ days
-        calcTotal -= calcDiscount;
-      }
+      let calcDiscount = 0; // Discount is condition-based, not auto-calculated here
       
       setDiscount(calcDiscount);
       setTotalPrice(calcTotal);
     }
   }, [startDate, endDate, car]);
 
-  const handleBookingClick = (e) => {
-    e.preventDefault();
+  const handleBookingClick = () => {
     if (!isAuthenticated) {
-      toast.error("Iltimos, oldin tizimga kiring!");
+      toast.error('Iltimos, bron qilish uchun tizimga kiring');
       navigate('/login');
       return;
     }
-    if (!isDocumentsVerified) {
-      toast.error("Avtomobil bron qilish uchun avval profilingizda hujjatlarni tasdiqlang!");
-      navigate('/profile');
-      return;
-    }
-    navigate(`/booking/${car.id}`, { state: { startDate, endDate, startTime, endTime, pickupLocation, totalPrice } });
+    navigate(`/booking/${car.id}`, { state: { 
+      startDate: startDate?.toISOString().split('T')[0], 
+      endDate: endDate?.toISOString().split('T')[0], 
+      startTime, endTime, pickupLocation: car?.pickupLocation || 'Toshkent shahar', totalPrice 
+    } });
   };
 
   if (!car) {
@@ -293,7 +314,17 @@ export default function CarDetailsPage() {
               <div className="mb-6">
                 <div className="flex items-end gap-2 mb-1">
                   <span className="text-2xl font-bold text-slate-900">
-                    {(car.pricePerDay || car.pricePerWeek || car.pricePerMonth).toLocaleString()} UZS {car.pricePerDay ? 'kuniga' : (car.pricePerWeek ? 'haftasiga' : 'oyiga')}
+                    {car.price?.hourly ? (
+                      <>{(car.price.hourly).toLocaleString()} UZS <span className="text-base font-normal text-slate-500">soatiga</span></>
+                    ) : car.price?.daily || car.pricePerDay ? (
+                      <>{(car.price?.daily || car.pricePerDay).toLocaleString()} UZS <span className="text-base font-normal text-slate-500">kuniga</span></>
+                    ) : car.price?.weekly || car.pricePerWeek ? (
+                      <>{(car.price?.weekly || car.pricePerWeek).toLocaleString()} UZS <span className="text-base font-normal text-slate-500">haftasiga</span></>
+                    ) : car.price?.monthly || car.pricePerMonth ? (
+                      <>{(car.price?.monthly || car.pricePerMonth).toLocaleString()} UZS <span className="text-base font-normal text-slate-500">oyiga</span></>
+                    ) : (
+                      <>Narx belgilanmagan</>
+                    )}
                   </span>
                 </div>
               </div>
@@ -306,10 +337,15 @@ export default function CarDetailsPage() {
                     <label className="block text-sm text-slate-600 mb-1">Boshlanishi</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <input 
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
+                        <DatePicker
+                          selected={startDate}
+                          onChange={(date) => setStartDate(date)}
+                          selectsStart
+                          startDate={startDate}
+                          endDate={endDate}
+                          minDate={new Date()}
+                          excludeDates={excludedDates}
+                          dateFormat="yyyy-MM-dd"
                           className="w-full border border-slate-300 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-sm font-medium text-slate-700"
                         />
                       </div>
@@ -336,11 +372,15 @@ export default function CarDetailsPage() {
                     <label className="block text-sm text-slate-600 mb-1">Tugashi</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <input 
-                          type="date"
-                          value={endDate}
-                          min={startDate}
-                          onChange={(e) => setEndDate(e.target.value)}
+                        <DatePicker
+                          selected={endDate}
+                          onChange={(date) => setEndDate(date)}
+                          selectsEnd
+                          startDate={startDate}
+                          endDate={endDate}
+                          minDate={startDate || new Date()}
+                          excludeDates={excludedDates}
+                          dateFormat="yyyy-MM-dd"
                           className="w-full border border-slate-300 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-sm font-medium text-slate-700"
                         />
                       </div>
@@ -368,25 +408,16 @@ export default function CarDetailsPage() {
               <div className="mb-6">
                 <div className="flex justify-between items-start mb-1">
                   <h4 className="font-bold text-slate-900 text-[15px]">Olish va qaytarish manzili</h4>
-                  <button onClick={() => {
-                    const newLoc = prompt('Yangi manzilni kiriting:', pickupLocation);
-                    if (newLoc) setPickupLocation(newLoc);
-                  }} className="p-1 hover:bg-slate-100 rounded-full text-slate-500 transition-colors border border-slate-200">
-                    <Pencil size={14} />
-                  </button>
                 </div>
-                <p className="text-slate-700 text-sm mb-1 leading-relaxed">{pickupLocation}</p>
-                <div className="flex items-center gap-1 text-slate-500 cursor-pointer hover:underline text-xs">
-                  Aeroportdan olish haqida <Info size={12} />
-                </div>
+                <p className="text-slate-700 text-sm mb-1 leading-relaxed">{car?.pickupLocation || 'Toshkent shahar'}</p>
               </div>
 
-              {discount > 0 && (
+              {car?.discount?.percentage > 0 && (
                 <div className="mb-6 pt-4 border-t border-slate-100">
-                  <h4 className="font-bold text-slate-900 mb-3 text-lg">Chegirma</h4>
-                  <div className="flex justify-between items-center text-[15px]">
-                    <span className="text-slate-700">{daysCount}+ kunlik chegirma</span>
-                    <span className="text-[#0fa464] font-medium">-${discount}</span>
+                  <h4 className="font-bold text-slate-900 mb-3 text-lg">Chegirma imkoniyati</h4>
+                  <div className="flex justify-between items-center text-[15px] bg-green-50 p-3 rounded-lg border border-green-100">
+                    <span className="text-green-800 font-medium">Shart: {car.discount.condition}</span>
+                    <span className="text-[#0fa464] font-bold">-{car.discount.percentage}%</span>
                   </div>
                 </div>
               )}
@@ -405,8 +436,16 @@ export default function CarDetailsPage() {
                   <div className="flex gap-4">
                     <ThumbsUp className="text-slate-700 mt-0.5 flex-shrink-0" size={22} />
                     <div>
-                      <p className="text-slate-900 text-[15px] mb-1">Bepul bekor qilish</p>
-                      <p className="text-slate-500 text-[13px] leading-relaxed">Bron qilingandan so'ng 24 soat ichida to'liq pul qaytariladi. Keyingi bosqichlarda boshqa variantlar ham mavjud.</p>
+                      <p className="text-slate-900 text-[15px] mb-1">{car.policies?.cancellation || 'Bepul bekor qilish'}</p>
+                      <p className="text-slate-500 text-[13px] leading-relaxed">
+                        {car.policies?.cancellation === "Qat'iy bekor qilish" 
+                          ? "Bekor qilingan taqdirda pul qaytarilmaydi yoki jarima ushlab qolinadi."
+                          : car.policies?.cancellation === "Bekor qilish mumkin emas"
+                          ? "Ushbu buyurtmani bekor qilib bo'lmaydi."
+                          : car.policies?.cancellation === "Bepul bekor qilish"
+                          ? "Bron qilingandan so'ng 24 soat ichida to'liq pul qaytariladi."
+                          : "Avto egasining shaxsiy bekor qilish qoidasi qo'llaniladi."}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -426,7 +465,20 @@ export default function CarDetailsPage() {
                   <h4 className="font-bold text-slate-900 mb-3 text-lg">Kiritilgan masofa</h4>
                   <div className="flex items-center gap-4">
                     <Gauge className="text-slate-700 flex-shrink-0" size={22} />
-                    <p className="text-slate-900 text-[15px]">Cheklanmagan</p>
+                    <p className="text-slate-900 text-[15px]">{car?.distanceLimit || 'Cheklanmagan'}</p>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100">
+                  <h4 className="font-bold text-slate-900 mb-3 text-lg">Garov puli (Zalog)</h4>
+                  <div className="flex items-center gap-4">
+                    <ShieldAlert className="text-slate-700 flex-shrink-0" size={22} />
+                    <div>
+                      <p className="text-slate-900 text-[15px] mb-1">
+                        {car?.securityDeposit ? `${car.securityDeposit.toLocaleString()} UZS` : 'Olinmaydi'}
+                      </p>
+                      <p className="text-slate-500 text-[13px] leading-relaxed">Ijaradan oldin ehtimoliy jarimalar va zararlar uchun muzlatiladi.</p>
+                    </div>
                   </div>
                 </div>
 

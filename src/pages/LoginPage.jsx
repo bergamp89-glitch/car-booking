@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car } from 'lucide-react';
+import { Car, Phone, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
@@ -11,19 +11,16 @@ export default function LoginPage() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Check if it's admin
     if (phone === 'admin' && password === 'admin123') {
       import('react-hot-toast').then(({ default: toast }) => {
         toast.success('Admin paneliga muvaffaqiyatli kirdingiz!', { icon: '🔐' });
       });
       adminLogin(phone, password);
-      // Give admin full user capabilities
       login({ id: 'admin-1', name: 'Super Admin', phone: 'admin', role: 'ADMIN', documentsVerified: true });
       navigate('/admin');
       return;
     }
 
-    // Mock normal user login logic
     login({ id: 1, name: 'Foydalanuvchi', phone, role: 'GUEST', documentsVerified: false });
     navigate('/profile');
   };
@@ -32,88 +29,99 @@ export default function LoginPage() {
     <div className="min-h-[calc(100vh-64px)] bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
-          <div className="bg-brand-600 text-white p-3 rounded-xl shadow-lg shadow-brand-500/30">
-            <Car size={32} />
+          <div className="bg-brand-600 text-white p-3 rounded-2xl shadow-lg shadow-brand-500/30">
+            <Car size={36} />
           </div>
         </div>
-        <h2 className="mt-2 text-center text-3xl font-extrabold text-slate-900">
+        <h2 className="text-center text-3xl font-extrabold text-slate-900 mb-2">
           Tizimga kirish
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Yoki{' '}
-          <Link to="/register" className="font-medium text-brand-600 hover:text-brand-500">
-            yangi akkaunt ochish
-          </Link>
+        <p className="text-center text-slate-500 mb-8">
+          Davom etish uchun ma'lumotlaringizni kiriting
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm border border-slate-100 sm:rounded-2xl sm:px-10">
-          <form className="space-y-6" onSubmit={handleLogin}>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-6 shadow-xl shadow-slate-200/50 sm:rounded-3xl border border-slate-100 sm:px-10">
+          <form className="space-y-5" onSubmit={handleLogin}>
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-slate-700">
-                Telefon raqam (yoki admin login)
+              <label htmlFor="phone" className="block text-sm font-bold text-slate-700 mb-1.5">
+                Telefon raqam (yoki admin)
               </label>
-              <div className="mt-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Phone size={20} />
+                </div>
                 <input
                   id="phone"
                   name="phone"
                   type="text"
-                  placeholder="+998 / admin"
+                  placeholder="+998 90 123 45 67"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
-                  className="appearance-none block w-full px-3 py-3 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
+                  className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white transition-all font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="password" className="block text-sm font-bold text-slate-700 mb-1.5">
                 Parol
               </label>
-              <div className="mt-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Lock size={20} />
+                </div>
                 <input
                   id="password"
                   name="password"
                   type="password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="appearance-none block w-full px-3 py-3 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
+                  className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white transition-all font-medium"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-1">
               <div className="flex items-center">
                 <input
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
+                  className="h-5 w-5 text-brand-600 focus:ring-brand-500 border-slate-300 rounded cursor-pointer"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-900">
+                <label htmlFor="remember-me" className="ml-2 block text-sm font-medium text-slate-700 cursor-pointer">
                   Meni eslab qol
                 </label>
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-brand-600 hover:text-brand-500">
+                <a href="#" className="font-bold text-brand-600 hover:text-brand-500 transition-colors">
                   Parolni unutdingizmi?
                 </a>
               </div>
             </div>
 
-            <div>
+            <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors"
+                className="w-full flex items-center justify-center py-4 px-4 border border-transparent rounded-xl shadow-md shadow-brand-500/20 text-base font-bold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all active:scale-[0.98]"
               >
                 Kirish
               </button>
             </div>
           </form>
+
+          <p className="mt-8 text-center text-sm text-slate-600">
+            Akkauntingiz yo'qmi?{' '}
+            <Link to="/register" className="font-bold text-brand-600 hover:text-brand-500 transition-colors">
+              Ro'yxatdan o'tish
+            </Link>
+          </p>
         </div>
       </div>
     </div>
